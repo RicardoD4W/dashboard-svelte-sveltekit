@@ -29,6 +29,8 @@ export type CustomerFilterStatus = CustomerStatus | 'at-risk' | 'all';
 
 export type CustomerSort = 'mrr' | 'ltv' | 'health' | 'name';
 
+export type SortDir = 'asc' | 'desc';
+
 export const AT_RISK_HEALTH_THRESHOLD = 50;
 
 export interface CustomerRow {
