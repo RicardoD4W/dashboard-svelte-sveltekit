@@ -18,6 +18,7 @@ import {
 	parseIsoDate,
 	parsePage,
 	parseSort,
+	parseSortDir,
 	parseStatus,
 	resolveRangePreset,
 	RANGE_PRESETS,
@@ -43,11 +44,12 @@ export const load: PageServerLoad = ({ url }) => {
 	const page = parsePage(url);
 	const sort = parseSort(url, VALID_SORTS, 'mrr');
 	const status = parseStatus(url, VALID_STATUSES, 'all');
+	const dir = parseSortDir(url);
 
 	const kpis: Kpi[] = generateKpis(from, to);
 	const revenue: RevenuePoint[] = generateRevenueSeries(from, to);
 	const growth: GrowthPoint[] = generateCustomerGrowthSeries(from, to);
-	const customers: Paginated<CustomerRow> = generateCustomers(from, to, page, sort, status);
+	const customers: Paginated<CustomerRow> = generateCustomers(from, to, page, sort, status, dir);
 
 	const presets = RANGE_PRESETS.map((p) => {
 		const range = computePresetRange(p.id, today);
@@ -66,7 +68,8 @@ export const load: PageServerLoad = ({ url }) => {
 			rangeId: rangeId satisfies RangePresetId | 'custom' | 'default',
 			page,
 			sort,
-			status
+			status,
+			dir
 		},
 		presets,
 		kpis,

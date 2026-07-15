@@ -13,6 +13,7 @@ import {
 	parseIsoDate,
 	parsePage,
 	parseSort,
+	parseSortDir,
 	parseStatus
 } from '$lib/server/query-params';
 
@@ -30,9 +31,17 @@ export const GET: RequestHandler = ({ url }) => {
 	const page = parsePage(url);
 	const sort = parseSort(url, VALID_SORTS, 'mrr');
 	const status = parseStatus(url, VALID_STATUSES, 'all');
+	const dir = parseSortDir(url);
 
 	try {
-		const data = generateCustomers(from, to, page, sort, status) satisfies Paginated<CustomerRow>;
+		const data = generateCustomers(
+			from,
+			to,
+			page,
+			sort,
+			status,
+			dir
+		) satisfies Paginated<CustomerRow>;
 		const envelope: ApiEnvelope<Paginated<CustomerRow>> = {
 			data,
 			meta: {

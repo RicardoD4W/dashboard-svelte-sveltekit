@@ -1,7 +1,13 @@
 import type { PageServerLoad } from './$types';
 import { generateCustomers } from '$lib/data/mock-generator';
 import type { Paginated, CustomerRow } from '$lib/types/metrics';
-import { parseIsoDate, parsePage, parseSort, parseStatus } from '$lib/server/query-params';
+import {
+	parseIsoDate,
+	parsePage,
+	parseSort,
+	parseSortDir,
+	parseStatus
+} from '$lib/server/query-params';
 import type { CustomerSort, CustomerFilterStatus } from '$lib/types/metrics';
 
 const VALID_SORTS: readonly CustomerSort[] = ['mrr', 'ltv', 'health', 'name'];
@@ -22,14 +28,16 @@ export const load: PageServerLoad = ({ url }) => {
 	const page = parsePage(url);
 	const sort = parseSort(url, VALID_SORTS, 'mrr');
 	const status = parseStatus(url, VALID_STATUSES, 'all');
+	const dir = parseSortDir(url);
 
-	const customers: Paginated<CustomerRow> = generateCustomers(from, to, page, sort, status);
+	const customers: Paginated<CustomerRow> = generateCustomers(from, to, page, sort, status, dir);
 
 	return {
 		range: {
 			from: parseIsoDate(from),
 			to: parseIsoDate(to)
 		},
+		dir,
 		customers
 	};
 };
