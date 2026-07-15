@@ -45,17 +45,6 @@
 	);
 	const pageCount = $derived(Math.max(1, Math.ceil(customers.total / customers.pageSize)));
 
-	let sectionEl: HTMLElement | undefined = $state();
-
-	// After navigation to page > 1, scroll this section into view
-	$effect(() => {
-		const p = currentPage;
-		if (p > 1 && sectionEl) {
-			setTimeout(() => {
-				sectionEl?.scrollIntoView({ behavior: 'instant', block: 'start' });
-			}, 0);
-		}
-	});
 
 	// Clicking a sort header: cycle undefined → asc → desc → undefined.
 	// New column starts at asc. Direction is the source of truth — lives in the URL.
@@ -85,7 +74,7 @@
 			page: nextPage,
 			dir: nextDir
 		};
-		goto(withParams(params));
+		goto(withParams(params), { noScroll: true });
 	}
 
 	// Arrow indicator — derived from URL only, never from stale local state
@@ -162,7 +151,6 @@
 </script>
 
 <section
-	bind:this={sectionEl}
 	class="overflow-hidden rounded-lg border border-border bg-surface shadow-sm"
 	aria-busy={loading}
 >
@@ -174,16 +162,17 @@
 		<div class="flex flex-wrap gap-1" role="tablist" aria-label="Filter by status">
 			{#each FILTERS as f (f)}
 				{@const isActive = currentStatus === f}
-				<a
-					href={withParams({ status: f === 'all' ? null : f, page: null })}
+				<button
+					type="button"
 					role="tab"
 					aria-selected={isActive}
 					class="rounded-full px-3 py-1 text-xs font-medium transition {isActive
 						? 'bg-text-primary text-bg'
 						: 'bg-bg text-text-muted hover:text-text-primary'}"
+					onclick={() => goto(withParams({ status: f === 'all' ? null : f, page: null }), { noScroll: true })}
 				>
 					{FILTERS_LABELS[f]}
-				</a>
+				</button>
 			{/each}
 		</div>
 	</header>
