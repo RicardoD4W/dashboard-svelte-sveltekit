@@ -10,7 +10,9 @@
 
 	let { data }: PageProps = $props();
 
-	const isLoading = $derived(!!navigating.to);
+	// Only show loading during actual navigation (both to and from are set).
+	// During initial page load/hydration, navigating.from is undefined so no skeleton flashes.
+	const isLoading = $derived(!!navigating.to && !!navigating.from);
 </script>
 
 <svelte:head>

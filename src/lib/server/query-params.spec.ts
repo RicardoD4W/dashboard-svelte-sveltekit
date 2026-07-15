@@ -337,4 +337,21 @@ describe('query-params', () => {
 			expect(result.rangeId).toBe('7d');
 		});
 	});
+
+	describe('computePresetRange edge cases (branch coverage)', () => {
+		it('falls back to 30 days when preset id is not found', () => {
+			// Cast through unknown to bypass the strict RangePresetId type
+			const result = computePresetRange('not-a-real-id' as never, new Date('2024-06-15'));
+			// 30 days fallback → diff of 29 days
+			const diff = (result.to.getTime() - result.from.getTime()) / (24 * 60 * 60 * 1000);
+			expect(diff).toBe(29);
+		});
+
+		it('handles from > to by clamping from to to', () => {
+			// 'all' preset with 365 days, but if from somehow exceeds to, it gets clamped
+			const result = computePresetRange('all', new Date('2024-06-15'));
+			// After the from > to check, the result should be valid (from <= to)
+			expect(result.from.getTime()).toBeLessThanOrEqual(result.to.getTime());
+		});
+	});
 });

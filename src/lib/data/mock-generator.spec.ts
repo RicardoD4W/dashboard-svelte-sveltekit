@@ -390,4 +390,73 @@ describe('mock-generator', () => {
 			expect(customer).toBeNull();
 		});
 	});
+
+	describe('branch coverage (toDate + lastN)', () => {
+		it('accepts Date object input for generateKpis', () => {
+			// toDate branch: value instanceof Date
+			const kpis = generateKpis(new Date('2024-01-01'), new Date('2024-01-30'));
+			expect(kpis).toHaveLength(6);
+		});
+
+		it('accepts Date object input for generateRevenueSeries', () => {
+			const series = generateRevenueSeries(new Date('2024-01-01'), new Date('2024-01-05'));
+			expect(series).toHaveLength(5);
+		});
+
+		it('accepts Date object input for generateCustomerGrowthSeries', () => {
+			const series = generateCustomerGrowthSeries(
+				new Date('2024-01-01'),
+				new Date('2024-01-05')
+			);
+			expect(series).toHaveLength(5);
+		});
+
+		it('accepts Date object input for generateCustomers', () => {
+			const result = generateCustomers(new Date('2024-01-01'), new Date('2024-01-30'));
+			expect(result.rows.length).toBeGreaterThan(0);
+		});
+	});
+
+	describe('at-risk filter', () => {
+		it('filters to at-risk customers only (health < threshold)', () => {
+			const result = generateCustomers('2024-01-01', '2024-01-30', 1, 'mrr', 'at-risk');
+			// Every row should have health below the AT_RISK_HEALTH_THRESHOLD (50)
+			// Note: at-risk branch checks r.health < AT_RISK_HEALTH_THRESHOLD
+			for (const row of result.rows) {
+				expect(row.health).toBeLessThan(50);
+			}
+		});
+
+		it('at-risk filter hits the r.health < threshold branch', () => {
+			// This test specifically exercises the at-risk branch in sortCustomers
+			const all = generateCustomers('2024-01-01', '2024-01-30', 1, 'mrr', 'all');
+			const atRisk = generateCustomers('2024-01-01', '2024-01-30', 1, 'mrr', 'at-risk');
+			// Both should return paginated results
+			expect(Array.isArray(all.rows)).toBe(true);
+			expect(Array.isArray(atRisk.rows)).toBe(true);
+		});
+	});
+
+	describe('edge case coverage (lastN + sparkline)', () => {
+		it('generateCustomerGrowthSeries with very short range produces minimal data', () => {
+			// Single day range — exercises ltvSparkline map paths
+			const series = generateCustomerGrowthSeries('2024-01-01', '2024-01-01');
+			expect(series).toHaveLength(1);
+		});
+
+		it('generateKpis with single day range exercises sparkline branches', () => {
+			// Single day — exercises arpuSparkline map paths
+			const kpis = generateKpis('2024-01-01', '2024-01-01');
+			expect(kpis).toHaveLength(6);
+			// ARPU should still be defined
+			const arpu = kpis.find((k) => k.id === 'arpu')!;
+			expect(arpu.value).toBeDefined();
+		});
+
+		it('generateRevenueSeries with single day exercises first point projected = mrr', () => {
+			// First point: trailingGrowth = 0 → projected = mrr * 1 = mrr
+			const series = generateRevenueSeries('2024-01-01', '2024-01-01');
+			expect(series[0].projected).toBe(series[0].mrr);
+		});
+	});
 });

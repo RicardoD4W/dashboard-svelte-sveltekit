@@ -233,7 +233,7 @@
 	</header>
 
 	<div bind:this={containerEl} class="relative">
-		{#if loading}
+		{#if loading || measuredWidth === 0}
 			<div
 				class="w-full animate-pulse rounded bg-border/40"
 				style="height: {HEIGHT}px"
