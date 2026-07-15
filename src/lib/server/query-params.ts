@@ -1,3 +1,5 @@
+import type { SortDir } from '$lib/types/metrics';
+
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 function startOfUtcDay(date: Date): Date {
@@ -110,6 +112,14 @@ export function parseSort<T extends string>(url: URL, allowed: readonly T[], def
 		return raw as T;
 	}
 	return defaultSort;
+}
+
+export function parseSortDir(url: URL): SortDir | undefined {
+	const raw = url.searchParams.get('dir');
+	if (raw === 'asc' || raw === 'desc') {
+		return raw;
+	}
+	return undefined;
 }
 
 export function parseStatus<T extends string>(
