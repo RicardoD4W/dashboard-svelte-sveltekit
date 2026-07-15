@@ -19,7 +19,7 @@
 	let mode = $state<Mode>('split');
 
 	let containerEl: HTMLDivElement | undefined = $state();
-	let width = $state(0);
+	let measuredWidth = $state(0);
 
 	function niceMax(v: number): number {
 		if (v <= 0) return 1;
@@ -47,7 +47,7 @@
 	}
 
 	const scales = $derived.by<Scales>(() => {
-		if (data.length === 0 || width === 0) {
+		if (data.length === 0 || measuredWidth === 0) {
 			return {
 				yMax: 1,
 				y: () => 0,
@@ -57,7 +57,7 @@
 			};
 		}
 
-		const innerW = Math.max(1, width - PAD.left - PAD.right);
+		const innerW = Math.max(1, measuredWidth - PAD.left - PAD.right);
 		const innerH = Math.max(1, HEIGHT - PAD.top - PAD.bottom);
 
 		let rawMax = 0;
@@ -94,7 +94,7 @@
 	}
 
 	const hovered = $derived.by<HoverState | null>(() => {
-		if (hoveredIdx === null || data[hoveredIdx] === undefined || width === 0) return null;
+		if (hoveredIdx === null || data[hoveredIdx] === undefined || measuredWidth === 0) return null;
 		const p = data[hoveredIdx];
 		const x = PAD.left + hoveredIdx * scales.bandW + scales.bandW / 2;
 		return {
@@ -109,7 +109,7 @@
 	});
 
 	function handleMove(e: MouseEvent) {
-		if (data.length === 0 || width === 0) return;
+		if (data.length === 0 || measuredWidth === 0) return;
 		const svg = e.currentTarget as SVGSVGElement;
 		const rect = svg.getBoundingClientRect();
 		const x = e.clientX - rect.left - PAD.left;
@@ -128,29 +128,20 @@
 	onMount(() => {
 		if (!containerEl) return;
 
-		const measure = () => {
-			const w = containerEl!.getBoundingClientRect().width;
-			if (w > 0) width = w;
-		};
-
-		measure();
+		// Measure immediately — synchronous first paint
+		measuredWidth = containerEl.getBoundingClientRect().width;
 
 		const ro = new ResizeObserver((entries) => {
-			const w = entries[0]?.contentRect.width ?? 0;
-			if (w > 0) width = w;
+			measuredWidth = entries[0]?.contentRect.width ?? containerEl!.getBoundingClientRect().width;
 		});
 		ro.observe(containerEl);
 		return () => ro.disconnect();
 	});
 
+	// If data arrives before ResizeObserver fires, re-measure
 	$effect(() => {
-		if (data.length > 0 && width === 0) {
-			requestAnimationFrame(() => {
-				if (containerEl) {
-					const w = containerEl.getBoundingClientRect().width;
-					if (w > 0) width = w;
-				}
-			});
+		if (data.length > 0 && measuredWidth === 0 && containerEl) {
+			measuredWidth = containerEl.getBoundingClientRect().width;
 		}
 	});
 </script>
@@ -219,7 +210,7 @@
 			</div>
 		{:else}
 			<svg
-				width={width || 600}
+				width={measuredWidth || 600}
 				height={HEIGHT}
 				role="img"
 				aria-label="Customer growth over time"
@@ -230,7 +221,7 @@
 				{#each scales.yTicks as t (t.value)}
 					<line
 						x1={PAD.left}
-						x2={width - PAD.right}
+						x2={measuredWidth - PAD.right}
 						y1={t.y}
 						y2={t.y}
 						stroke="currentColor"
@@ -251,7 +242,7 @@
 
 				<line
 					x1={PAD.left}
-					x2={width - PAD.right}
+					x2={measuredWidth - PAD.right}
 					y1={scales.baselineY}
 					y2={scales.baselineY}
 					stroke="currentColor"
