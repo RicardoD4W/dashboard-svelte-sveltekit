@@ -6,7 +6,8 @@
 		Paginated,
 		CustomerRow,
 		CustomerSort,
-		CustomerFilterStatus
+		CustomerFilterStatus,
+		SortDir
 	} from '$lib/types/metrics';
 
 	interface Props {
@@ -32,15 +33,19 @@
 			: 'all'
 	);
 
+	const currentDir = $derived<SortDir | undefined>(
+		(() => {
+			const raw = page.url.searchParams.get('dir');
+			return raw === 'asc' || raw === 'desc' ? (raw as SortDir) : undefined;
+		})()
+	);
+
 	const currentPage = $derived(
 		Math.max(1, Number.parseInt(page.url.searchParams.get('page') ?? '1', 10) || 1)
 	);
 	const pageCount = $derived(Math.max(1, Math.ceil(customers.total / customers.pageSize)));
 
 	let sectionEl: HTMLElement | undefined = $state();
-
-	// Sort direction: 'desc' (default) | 'asc' | null (back to default mrr desc)
-	let sortDir = $state<'desc' | 'asc' | null>('desc');
 
 	// After navigation to page > 1, scroll this section into view
 	$effect(() => {
@@ -52,40 +57,49 @@
 		}
 	});
 
-	// Clicking a sort header: cycling desc → asc → (back to default / no sort)
+	// Clicking a sort header: cycle undefined → asc → desc → undefined.
+	// New column starts at asc. Direction is the source of truth — lives in the URL.
 	function handleSort(col: CustomerSort) {
+		let nextDir: SortDir | undefined;
+		// Preserve page when cycling direction on the same column; reset when changing columns or going to default
+		let nextPage: string | undefined | null = null;
 		if (currentSort === col) {
-			// Same column: cycle desc → asc → null
-			if (sortDir === 'desc') {
-				sortDir = 'asc';
-			} else if (sortDir === 'asc') {
-				sortDir = null; // back to default (mrr desc)
+			// Same column: undefined → asc → desc → undefined
+			if (currentDir === undefined) {
+				nextDir = 'asc';
+				nextPage = page.url.searchParams.get('page') ?? null; // preserve current page
+			} else if (currentDir === 'asc') {
+				nextDir = 'desc';
+				nextPage = page.url.searchParams.get('page') ?? null; // preserve current page
 			} else {
-				sortDir = 'desc';
+				nextDir = undefined; // back to default — page still relevant, preserve it
+				nextPage = page.url.searchParams.get('page') ?? null;
 			}
 		} else {
-			// New column: always start desc
-			sortDir = 'desc';
+			// New column: always start ascending, reset page
+			nextDir = 'asc';
 		}
-		// Navigate to update URL — null sort means remove sort param (back to default mrr)
-		const params =
-			sortDir === null
-				? { sort: null, page: null }
-				: { sort: col, page: null };
+		// Navigate to update URL — undefined dir means delete both sort and dir (back to default MRR sort)
+		const params: Record<string, string | undefined | null> = {
+			sort: nextDir === undefined ? undefined : col,
+			page: nextPage,
+			dir: nextDir
+		};
 		goto(withParams(params));
 	}
 
-	// Arrow indicator for sort direction
+	// Arrow indicator — derived from URL only, never from stale local state
 	function sortArrow(col: CustomerSort): string {
 		if (currentSort !== col) return '';
-		if (sortDir === 'asc') return '↑';
-		return '↓';
+		if (currentDir === 'asc') return '↑';
+		if (currentDir === 'desc') return '↓';
+		return '';
 	}
 
-	function withParams(overrides: Record<string, string | number | null>): string {
+	function withParams(overrides: Record<string, string | number | null | undefined>): string {
 		const next = new URLSearchParams(page.url.searchParams);
 		for (const [k, v] of Object.entries(overrides)) {
-			if (v === null || v === '') next.delete(k);
+			if (v === null || v === undefined || v === '') next.delete(k);
 			else next.set(k, String(v));
 		}
 		const qs = next.toString();
