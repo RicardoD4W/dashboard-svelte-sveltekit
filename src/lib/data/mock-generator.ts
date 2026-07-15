@@ -19,7 +19,8 @@ import type {
 	CustomerStatus,
 	CustomerSort,
 	CustomerFilterStatus,
-	Paginated
+	Paginated,
+	SortDir
 } from '$lib/types/metrics';
 import { AT_RISK_HEALTH_THRESHOLD } from '$lib/types/metrics';
 
@@ -281,13 +282,14 @@ export function generateCustomers(
 	to: DateInput,
 	page = 1,
 	sort: CustomerSort = 'mrr',
-	status: CustomerFilterStatus = 'all'
+	status: CustomerFilterStatus = 'all',
+	dir?: SortDir
 ): Paginated<CustomerRow> {
 	const pageSize = 10;
 	void from;
 	void to;
 
-	const sorted = sortCustomers(generateAllCustomers(), sort, status);
+	const sorted = sortCustomers(generateAllCustomers(), sort, status, dir);
 	const total = sorted.length;
 	const safePage = Math.max(1, page);
 	const start = (safePage - 1) * pageSize;
@@ -327,7 +329,8 @@ function generateAllCustomers(): CustomerRow[] {
 function sortCustomers(
 	rows: CustomerRow[],
 	sort: CustomerSort,
-	status: CustomerFilterStatus
+	status: CustomerFilterStatus,
+	dir?: SortDir
 ): CustomerRow[] {
 	const filtered =
 		status === 'all'
@@ -337,7 +340,13 @@ function sortCustomers(
 				);
 
 	return filtered.slice().sort((a, b) => {
-		if (sort === 'name') return a.name.localeCompare(b.name);
-		return (b[sort] as number) - (a[sort] as number);
+		if (sort === 'name') {
+			const cmp = a.name.localeCompare(b.name);
+			// Default for name: ascending. Flip when dir === 'desc'.
+			return dir === 'desc' ? -cmp : cmp;
+		}
+		const cmp = (b[sort] as number) - (a[sort] as number);
+		// Default for mrr/ltv/health: descending. Flip when dir === 'asc'.
+		return dir === 'asc' ? -cmp : cmp;
 	});
 }
