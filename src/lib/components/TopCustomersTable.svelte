@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import type {
 		Paginated,
@@ -35,6 +36,51 @@
 		Math.max(1, Number.parseInt(page.url.searchParams.get('page') ?? '1', 10) || 1)
 	);
 	const pageCount = $derived(Math.max(1, Math.ceil(customers.total / customers.pageSize)));
+
+	let sectionEl: HTMLElement | undefined = $state();
+
+	// Sort direction: 'desc' (default) | 'asc' | null (back to default mrr desc)
+	let sortDir = $state<'desc' | 'asc' | null>('desc');
+
+	// After navigation to page > 1, scroll this section into view
+	$effect(() => {
+		const p = currentPage;
+		if (p > 1 && sectionEl) {
+			setTimeout(() => {
+				sectionEl?.scrollIntoView({ behavior: 'instant', block: 'start' });
+			}, 0);
+		}
+	});
+
+	// Clicking a sort header: cycling desc → asc → (back to default / no sort)
+	function handleSort(col: CustomerSort) {
+		if (currentSort === col) {
+			// Same column: cycle desc → asc → null
+			if (sortDir === 'desc') {
+				sortDir = 'asc';
+			} else if (sortDir === 'asc') {
+				sortDir = null; // back to default (mrr desc)
+			} else {
+				sortDir = 'desc';
+			}
+		} else {
+			// New column: always start desc
+			sortDir = 'desc';
+		}
+		// Navigate to update URL — null sort means remove sort param (back to default mrr)
+		const params =
+			sortDir === null
+				? { sort: null, page: null }
+				: { sort: col, page: null };
+		goto(withParams(params));
+	}
+
+	// Arrow indicator for sort direction
+	function sortArrow(col: CustomerSort): string {
+		if (currentSort !== col) return '';
+		if (sortDir === 'asc') return '↑';
+		return '↓';
+	}
 
 	function withParams(overrides: Record<string, string | number | null>): string {
 		const next = new URLSearchParams(page.url.searchParams);
@@ -102,6 +148,7 @@
 </script>
 
 <section
+	bind:this={sectionEl}
 	class="overflow-hidden rounded-lg border border-border bg-surface shadow-sm"
 	aria-busy={loading}
 >
@@ -134,24 +181,40 @@
 			>
 				<tr>
 					<th class="px-4 py-2 font-medium">
-						<a class="hover:text-text-primary" href={withParams({ sort: 'name', page: null })}>
-							Customer {currentSort === 'name' ? '↓' : ''}
-						</a>
+						<button
+							type="button"
+							class="hover:text-text-primary cursor-pointer"
+							onclick={() => handleSort('name')}
+						>
+							Customer {sortArrow('name')}
+						</button>
 					</th>
 					<th class="px-4 py-2 text-right font-medium">
-						<a class="hover:text-text-primary" href={withParams({ sort: 'mrr', page: null })}>
-							MRR {currentSort === 'mrr' ? '↓' : ''}
-						</a>
+						<button
+							type="button"
+							class="hover:text-text-primary cursor-pointer"
+							onclick={() => handleSort('mrr')}
+						>
+							MRR {sortArrow('mrr')}
+						</button>
 					</th>
 					<th class="px-4 py-2 text-right font-medium">
-						<a class="hover:text-text-primary" href={withParams({ sort: 'ltv', page: null })}>
-							LTV {currentSort === 'ltv' ? '↓' : ''}
-						</a>
+						<button
+							type="button"
+							class="hover:text-text-primary cursor-pointer"
+							onclick={() => handleSort('ltv')}
+						>
+							LTV {sortArrow('ltv')}
+						</button>
 					</th>
 					<th class="px-4 py-2 font-medium">
-						<a class="hover:text-text-primary" href={withParams({ sort: 'health', page: null })}>
-							Health {currentSort === 'health' ? '↓' : ''}
-						</a>
+						<button
+							type="button"
+							class="hover:text-text-primary cursor-pointer"
+							onclick={() => handleSort('health')}
+						>
+							Health {sortArrow('health')}
+						</button>
 					</th>
 					<th class="px-4 py-2 font-medium">Status</th>
 				</tr>
